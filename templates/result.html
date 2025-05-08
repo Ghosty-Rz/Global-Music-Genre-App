@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Genre Prediction Result</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      padding: 2em;
+      background: #f3f3f3;
+    }
+    .container {
+      background: white;
+      padding: 2em;
+      border-radius: 20px;
+      width: 60%;
+      margin: auto;
+      box-shadow: 0px 5px 15px rgba(0,0,0,0.1);
+    }
+    .main-genre {
+      font-size: 3em;
+      font-weight: bold;
+      color: #222;
+      margin-top: 0.5em;
+    }
+    .other-genre {
+      margin: 1em auto;
+      background: #eee;
+      border-radius: 10px;
+      padding: 0.5em 1em;
+      display: flex;
+      justify-content: space-between;
+      width: 50%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3>{{ filename }}</h3>
+    <p>Your song falls under:</p>
+    <div class="main-genre">{{ main_genre.genre }}</div>
+    <h4>But I alsohear a bit of:</h4>
+    {% for genre in others %}
+    <div class="other-genre">
+      <span>{{ genre.genre }}</span>
+      <span>{{ genre.confidence }} %</span>
+    </div>
+    {% endfor %}
+  </div>
+</body>
+</html>
