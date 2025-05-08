@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Music Genre Classifier</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="index-page">
+    <div class="background-overlay"></div>
+    <nav class="navbar">
+        <div class="logo">💿</div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/about">About Us</a>
+        </div>
+        <a href="#upload" class="cta-button">TEST A SONG</a>
+    </nav>
+
+    <div class="hero">
+        <h1>Music Genre Classifier</h1>
+        <form action="/upload" method="POST" enctype="multipart/form-data" id="upload" onsubmit="showLoader()">
+            <label class="custom-file-upload">
+                <input type="file" name="file" accept=".mp3,.wav" required>
+                Choose a file
+            </label>
+            <br>
+            <audio id="audio-player" controls></audio>
+            <br>
+            <button type="submit">Let's Test</button>
+        </form>
+        <div id="loader" class="loader hidden">Analyzing...</div>
+    </div>
+
+    <script>
+        const fileInput = document.querySelector("input[type='file']");
+        const audioPlayer = document.getElementById("audio-player");
+
+        fileInput.addEventListener("change", function () {
+            const file = fileInput.files[0];
+            if (file) {
+                audioPlayer.src = URL.createObjectURL(file);
+            }
+        });
+
+        function showLoader() {
+            document.getElementById('loader').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>

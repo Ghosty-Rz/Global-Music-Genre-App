@@ -1,51 +1,55 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Genre Prediction Result</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      text-align: center;
-      padding: 2em;
-      background: #f3f3f3;
-    }
-    .container {
-      background: white;
-      padding: 2em;
-      border-radius: 20px;
-      width: 60%;
-      margin: auto;
-      box-shadow: 0px 5px 15px rgba(0,0,0,0.1);
-    }
-    .main-genre {
-      font-size: 3em;
-      font-weight: bold;
-      color: #222;
-      margin-top: 0.5em;
-    }
-    .other-genre {
-      margin: 1em auto;
-      background: #eee;
-      border-radius: 10px;
-      padding: 0.5em 1em;
-      display: flex;
-      justify-content: space-between;
-      width: 50%;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Result - Music Genre Classifier</title>
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-  <div class="container">
-    <h3>{{ filename }}</h3>
-    <p>Your song falls under:</p>
-    <div class="main-genre">{{ main_genre.genre }}</div>
-    <h4>But I alsohear a bit of:</h4>
-    {% for genre in others %}
-    <div class="other-genre">
-      <span>{{ genre.genre }}</span>
-      <span>{{ genre.confidence }} %</span>
+    <nav class="navbar">
+        <div class="logo">💿</div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/about">About Us</a>
+        </div>
+        <a href="/" class="cta-button">TEST A SONG</a>
+    </nav>
+
+    <div class="result-page">
+      <div class="audio-overlay">
+        <audio id="bg-audio" autoplay loop>
+            <source src="/static/uploads/{{ filename }}" type="audio/mpeg">
+            Your browser does not support the audio element.
+        </audio>
+      </div>
+      <button id="mute-btn">🔇</button>
+
+        <div class="result-container">
+            <div class="result-card">
+                <p>{{ filename }}</p>
+                <h2>Your song Falls under:</h2>
+                <h1>{{ top }}</h1>
+            </div>
+
+            <h3>The model hears also a bit of:</h3>
+            {% for genre, percent in others %}
+                <div class="genre-bar">
+                    <span>{{ genre }}</span>
+                    <span>{{ percent | round | int }} %</span>
+                </div>
+            {% endfor %}
+        </div>
     </div>
-    {% endfor %}
-  </div>
+  
+
+    <script>
+        const bgAudio = document.getElementById("bg-audio");
+        const muteBtn = document.getElementById("mute-btn");
+
+        muteBtn.addEventListener("click", () => {
+            bgAudio.muted = !bgAudio.muted;
+            muteBtn.textContent = bgAudio.muted ? "🔈" : "🔇";
+        });
+    </script>
 </body>
 </html>

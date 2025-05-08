@@ -1,94 +1,77 @@
-from flask import Flask, request, render_template, redirect, url_for
-import os
-import uuid
-import numpy as np
+from flask import Flask, render_template, request, redirect, url_for
 import tensorflow as tf
+import numpy as np
 import librosa
-import soundfile as sf
+import os
+from tensorflow.image import resize
+from werkzeug.utils import secure_filename
 
-
-# --- Init ---
 app = Flask(__name__)
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
-# --- Load Model ---
-model = tf.keras.models.load_model("model\Best_Trained_model_on_MuGen.h5")
+model = tf.keras.models.load_model("model/Best_Trained_model_on_MuGen.h5")
 
-# --- Load Genre Labels ---
+label = [
+                "Ahidous", "Aita", "Andalussi", "Australian Haka", "Khaleeji", "Arabic Pop", "Blues", "Pekinopera", "City Pop", "Classical Music", "classical tarab",
+                "country", "cumbia", "Salsa", "Disco", "EDM", "Hiphop", "Bollypop", "Ghazal", "Sufi", "Bandari", "issawa",
+                "jazz", "Pop", "kpop", "Chaabi", "Chgouri", "Dakka Marrakchia", "Gnawa", "Mariachi", "Merengue", "Metal", "nordic Folk", "Samic Joik", "Pop", "Rai", "Reggae", "RnB", "Rock", "samba", "sertanejo",
+                "slavic folk", "tango", "Turkish Folk", "Afrobeats", "Griot", "Highlife", "Chanson", "Flamenco", "Opera"
+                ]
 
-genre_labels = [
-    "Ahidous", "Aita", "andalussi", "Australian Haka", "Khaleeji", "Arabic Pop", "Blues", "Pekinopera", "City pop", "Classical Music",
-    "classical tarab", "country", "cumbia", "Salsa", "disco", "EDM", "hiphop", "Bollypop", "Ghazal", "Sufi", "Bandari", "Issawa",
-    "jazz", "jpop", "kpop", "Chaabi", "Chgouri", "Dakka Marrakchia", "Gnawa", "mariachi", "merengue", "metal", "Nordic Folk", 
-    "Samic Joik", "Pop", "Rai", "Reggae", "RnB", "Rock", "Samba", "Sertanejo",
-    "Slavic Folk", "Tango", "Turkish Folk", "Afrobeats", "Griot", "Highlife", "Chanson", "Flamenco", "Opera"
-]
+def load_and_preprocess_data(file_path, target_shape=(150, 150)):
+    data = []
+    audio_data, sample_rate = librosa.load(file_path, sr=None)
+    chunk_duration, overlap_duration = 4, 2
+    chunk_samples, overlap_samples = chunk_duration * sample_rate, overlap_duration * sample_rate
+    num_chunks = int(np.ceil((len(audio_data) - chunk_samples) / (chunk_samples - overlap_samples))) + 1
 
-# --- Helper: Preprocess Audio ---
-def preprocess_audio(file_path, chunk_duration=4, overlap=2, sr=44100, target_shape=(150, 150)):
-    y, _ = librosa.load(file_path, sr=sr)
-    chunk_samples = int(chunk_duration * sr)
-    overlap_samples = int(overlap * sr)
-    
-    chunks = []
-    for start in range(0, len(y) - chunk_samples + 1, chunk_samples - overlap_samples):
+    for i in range(num_chunks):
+        start = i * (chunk_samples - overlap_samples)
         end = start + chunk_samples
-        chunk = y[start:end]
-        mel = librosa.feature.melspectrogram(y=chunk, sr=sr)
-        mel_db = librosa.power_to_db(mel, ref=np.max)
-        mel_db = tf.image.resize(mel_db[..., np.newaxis], target_shape).numpy()
-        chunks.append(mel_db)
+        chunk = audio_data[start:end]
+        mel_spectrogram = librosa.feature.melspectrogram(y=chunk, sr=sample_rate)
+        mel_spectrogram = resize(np.expand_dims(mel_spectrogram, axis=-1), target_shape)
+        data.append(mel_spectrogram)
+    return np.array(data)
 
-    return np.stack(chunks)
+def model_prediction(X_test):
+    y_pred = model.predict(X_test)
+    predicted_categories = np.argmax(y_pred, axis=1)
+    unique_elements, counts = np.unique(predicted_categories, return_counts=True)
+    freq_dict = dict(zip(unique_elements, counts))
+    avg_probs = np.mean(y_pred, axis=0)
+    scores = {i: 0.6 * avg_probs[i] + 0.4 * (freq_dict.get(i, 0) / len(predicted_categories)) for i in range(len(avg_probs))}
+    sorted_genres = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+    top_genre = sorted_genres[0][0]
+    relevant_others = [idx for idx, _ in sorted_genres[1:6]]
+    top_scores = [scores[top_genre]] + [scores[i] for i in relevant_others]
+    total = sum(top_scores)
+    percentages = [(s / total) * 100 for s in top_scores]
+    indices = [top_genre] + relevant_others
+    return [label[i] for i in indices], percentages
 
-
-@app.route("/", methods=["GET"])
-def upload_form():
-    return render_template("upload.html")
-
-
-# --- Route: Upload & Predict ---
-@app.route("/predict", methods=["POST"])
-def predict():
-    if "audio" not in request.files:
-        return "No file uploaded", 400
-
-    file = request.files["audio"]
-    filename = file.filename
-    ext = filename.split(".")[-1]
-    temp_filename = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4()}.{ext}")
-    file.save(temp_filename)
-
-    try:
-        inputs = preprocess_audio(temp_filename)
-        predictions = model.predict(inputs)
-        average_probs = predictions.mean(axis=0)
-
-        # Top 5 genres
-        top_indices = average_probs.argsort()[::-1][:5]
-        results = [
-            {"genre": genre_labels[i], "confidence": round(float(average_probs[i]) * 100, 2)}
-            for i in top_indices
-        ]
-
-        return render_template("result.html", filename=filename, main_genre=results[0], others=results[1:])
-    except Exception as e:
-        return f"Error: {str(e)}", 500
-    finally:
-        os.remove(temp_filename)
-
-@app.route("/", methods=["GET"])
+@app.route("/")
 def home():
-    return """
-    <h2>Upload a song for genre prediction</h2>
-    <form method="POST" action="/predict" enctype="multipart/form-data">
-        <input type="file" name="audio" accept=".wav,.mp3" required>
-        <br><br>
-        <input type="submit" value="Upload & Predict">
-    </form>
-    """
+    return render_template("index.html")
 
-# --- Run App ---
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    file = request.files['file']
+    if file:
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        X_test = load_and_preprocess_data(filepath)
+        genres, percentages = model_prediction(X_test)
+
+        return render_template("result.html", filename=filename, top=genres[0], others=zip(genres[1:], percentages[1:]))
+
+    return redirect(url_for('home'))
+
 if __name__ == "__main__":
     app.run(debug=True)
