@@ -51,6 +51,21 @@ body {
     font-weight: bold;
 }
 
+.cta-button.sparkle {
+    position: relative;
+    animation: glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 5px #fff, 0 0 10px rgb(43, 0, 255), 0 0 15px rgb(255, 213, 0);
+    }
+    to {
+        box-shadow: 0 0 20px #fff, 0 0 30px rgb(255, 255, 255), 0 0 40px rgb(221, 0, 255);
+    }
+}
+
+
 .hero {
     margin-top: 50px;
 }
