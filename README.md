@@ -8,3 +8,4 @@ https://youtu.be/d-I91Ipeneo
 ![MuGenResults](https://github.com/user-attachments/assets/70fa4800-342f-4a47-b6ce-38c44a289e8e)
 
 picture reference: <a href="https://www.vecteezy.com/free-photos/turntable">Turntable Stock photos by Vecteezy</a>
+  ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
